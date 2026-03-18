@@ -7,4 +7,24 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="Persistence\" />
+      <Folder Include="Services\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.23" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.23">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.23" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FullForum-Application\FullForum-Application.csproj" />
+      <ProjectReference Include="..\FullForum-Domain\FullForum-Domain.csproj" />
+    </ItemGroup>
+
 </Project>
