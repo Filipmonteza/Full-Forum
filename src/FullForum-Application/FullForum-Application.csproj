@@ -7,4 +7,17 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="DTOs\" />
+      <Folder Include="UseCases\Comments\CreateComment\" />
+      <Folder Include="UseCases\Comments\GetCommentsForThread\" />
+      <Folder Include="UseCases\Threads\CreateThread\" />
+      <Folder Include="UseCases\Threads\GetThreads\" />
+      <Folder Include="UseCases\Users\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FullForum-Domain\FullForum-Domain.csproj" />
+    </ItemGroup>
+
 </Project>
