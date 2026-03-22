@@ -22,11 +22,11 @@ public interface ICommentRepository : IRepository<Comment>
     /// <summary>
     /// Return parent comment for Id, otherwise null
     /// </summary>
-    Task<Comment?> GetParentCommentAsync(Guid threadId, Guid userId, CancellationToken cancellationToken = default);
+    Task<Comment?> GetParentCommentAsync(Guid parentCommentId, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Returns all comments by specific user, sorted by creation date
     /// </summary>
-    Task<List<Comment>> GetByUserIdAsync(Guid parentCommentId, CancellationToken cancellationToken = default);
+    Task<List<Comment>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     
 }  
