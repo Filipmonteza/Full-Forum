@@ -12,7 +12,7 @@ public class Comment : BaseEntity
     
     // Navigation Properties
     public Guid ThreadId { get; set; }
-    public ForumThread Threads { get; set; } = null!;
+    public ForumThread Thread { get; set; } = null!;
     
     public Guid ApplicationUserId { get; set; }
     
@@ -23,7 +23,7 @@ public class Comment : BaseEntity
     public ICollection<Comment> ChildComments { get; set; } = new List<Comment>();
 
     /// <summary>
-    /// Validates that the comment has content, thread and user Id
+    /// Validates that the comment has content, thread and user ID
     /// </summary>
     public void Validate()
     {

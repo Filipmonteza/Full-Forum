@@ -1,6 +1,8 @@
 ﻿namespace FullForum_Application.UseCases.Threads.GetThreads;
 
-public class GetThreadCommand
-{
+/// <summary>
+/// Command for retrieving all threads from category
+/// </summary>
+public sealed record GetThreadCommand(Guid CategoryId);
+
     
-}
