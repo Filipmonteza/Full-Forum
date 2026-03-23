@@ -20,7 +20,8 @@ public interface IThreadRepository
     /// <summary>
     /// Return true if thread with duplicate title exists
     /// </summary>
-    Task<bool> ThreadTitleExistsInCategoryAsync(Guid categoryId, string title, CancellationToken cancellationToken = default);
+    Task<bool> ThreadTitleExistsInCategoryAsync(Guid categoryId, string title,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Return true if user with Id exists
@@ -31,4 +32,6 @@ public interface IThreadRepository
     /// Return all threads by user
     /// </summary>
     Task<List<ForumThread>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    Task AddAsync(ForumThread thread, CancellationToken cancellationToken = default);
 }

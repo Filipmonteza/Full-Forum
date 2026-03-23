@@ -8,7 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="UseCases\Threads\CreateThread\" />
       <Folder Include="UseCases\Threads\GetThreads\" />
       <Folder Include="UseCases\Users\" />
     </ItemGroup>
