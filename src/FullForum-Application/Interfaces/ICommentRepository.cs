@@ -20,7 +20,7 @@ public interface ICommentRepository : IRepository<Comment>
     Task<bool> UserExistsAsync(Guid userId, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Return parent comment for Id, otherwise null
+    /// Return parent comment for ID, otherwise null
     /// </summary>
     Task<Comment?> GetParentCommentAsync(Guid parentCommentId, CancellationToken cancellationToken = default);
     

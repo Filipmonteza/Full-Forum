@@ -8,10 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="UseCases\Users\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\FullForum-Domain\FullForum-Domain.csproj" />
     </ItemGroup>
 
