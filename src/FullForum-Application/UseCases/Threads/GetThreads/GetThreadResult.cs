@@ -4,7 +4,7 @@ namespace FullForum_Application.UseCases.Threads.GetThreads;
 
 public sealed record GetThreadResult(
     bool Success,
-    List<ForumThread> Threads,
+    List<ForumThread>? Threads,
     string? Error,
     int? SuggestionStatusCode = null
 )
