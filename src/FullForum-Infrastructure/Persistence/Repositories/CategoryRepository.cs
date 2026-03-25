@@ -1,37 +1,45 @@
 ﻿using FullForum_Application.Interfaces;
 using FullForum_Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace FullForum_Infrastructure.Persistence.Repositories;
 
 public class CategoryRepository : ICategoryRepository
 {
-    public Task<Category> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    private readonly ForumDbContext _dbContext;
+    
+    public CategoryRepository(ForumDbContext context) => _dbContext = context;
+    
+    // Collect category based on ID
+    public async Task<Category?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await _dbContext.Categories.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    
+    // Collect all categories from database
+    public async Task<List<Category>> GetAllAsync(CancellationToken cancellationToken = default) =>
+    await _dbContext.Categories.AsNoTracking().ToListAsync(cancellationToken);
+    
+    // Add new category in database
+    public async Task AddAsync(Category entity, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _dbContext.Categories.Update(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public Task<List<Category>> GetAllAsync(CancellationToken cancellationToken = default)
+    // Update existing category in database
+    public async Task UpdateAsync(Category entity, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _dbContext.Categories.Update(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public Task AddAsync(Category entity, CancellationToken cancellationToken = default)
+    // Mark category as deleted in database
+    public async Task DeleteAsync(Category entity, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _dbContext.Categories.Remove(entity);
+        await  _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public Task UpdateAsync(Category entity, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task DeleteAsync(Category entity, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<Category> GetNameAsync(string name, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
+    // Collect category based on name 
+    public async Task<Category?> GetNameAsync(string name, CancellationToken cancellationToken = default) =>
+    await  _dbContext.Categories.FirstOrDefaultAsync(c => c.CategoryName == name, cancellationToken);
 }

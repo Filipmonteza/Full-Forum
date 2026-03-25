@@ -10,5 +10,5 @@ public interface ICategoryRepository : IRepository<Category>
     /// <summary>
     /// Return category matching name, otherwise null
     /// </summary>
-    Task<Category> GetNameAsync(string name, CancellationToken cancellationToken = default);
+    Task<Category?> GetNameAsync(string name, CancellationToken cancellationToken = default);
 }

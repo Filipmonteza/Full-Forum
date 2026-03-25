@@ -121,6 +121,5 @@ public class ForumDbContext : IdentityDbContext<ApplicationIdentityUser, Identit
             }
         }
     }
-    
 }
 
