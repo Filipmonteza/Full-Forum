@@ -1,8 +1,10 @@
-﻿using FullForum_Domain.Entities;
+﻿using FullForum_Domain.Common;
+using FullForum_Domain.Entities;
 using FullForum_Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace FullForum_Infrastructure.Persistence;
 
@@ -57,9 +59,68 @@ public class ForumDbContext : IdentityDbContext<ApplicationIdentityUser, Identit
         return await base.SaveChangesAsync(cancellationToken);
     }
 
+    // Audit Logic
     private void ApplyAuditInfo()
     {
+        var now = DateTime.UtcNow;
+
+        // Collects all tracked entities in DbContext
+        var entries = ChangeTracker
+            .Entries()
+            .ToList();
+
+        foreach (var entry in entries)
+        {
+            // Separate handling as ApplicationIdentityUser,
+            // does not inherit from BaseEntity
+            if (entry.Entity is ApplicationIdentityUser appUser)
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        appUser.CreatedAt = now;
+                        break;
+                    
+                    case EntityState.Modified:
+                        appUser.UpdatedAt = now;
+                        break;
+                    
+                    case EntityState.Deleted:
+                        entry.State = EntityState.Modified;
+                        
+                        // Mark as soft delete
+                        appUser.IsDeleted = true;
+                        appUser.DeletedAt = now;
+                        appUser.UpdatedAt = now;
+                        break;
+                }
+            }
             
+            // Domain Entities
+            else if (entry.Entity is BaseEntity baseEntity)
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        baseEntity.CreatedAt = now;
+                        break;
+                    
+                    case EntityState.Modified:
+                        baseEntity.UpdatedAt = now;
+                        break;
+                    
+                    case EntityState.Deleted:
+                        entry.State = EntityState.Modified;
+                        
+                        // Mark as soft delete
+                        baseEntity.IsDeleted = true;
+                        baseEntity.DeletedAt = now;
+                        baseEntity.UpdatedAt = now;
+                        break;
+                }
+            }
+        }
     }
+    
 }
 
