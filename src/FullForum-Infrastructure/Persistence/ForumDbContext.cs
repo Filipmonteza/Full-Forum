@@ -13,9 +13,9 @@ public class ForumDbContext : IdentityDbContext<ApplicationIdentityUser, Identit
     public ForumDbContext(DbContextOptions<ForumDbContext> options)
         : base(options){ }
 
-    public DbSet<Category> Categories { get; set; } = null;
-    public DbSet<Comment> Comments { get; set; } = null;
-    public DbSet<ForumThread> Threads { get; set; } = null;
+    public DbSet<Category> Categories { get; set; } = default!;
+    public DbSet<Comment> Comments { get; set; } = default!;
+    public DbSet<ForumThread> Threads { get; set; } = default!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
