@@ -20,6 +20,11 @@ public class ThreadRepository : IThreadRepository
         throw new NotImplementedException();
     }
 
+    public Task<bool> ThreadExistsAsync(Guid threadId, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<bool> UserExistsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
