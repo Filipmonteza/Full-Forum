@@ -16,7 +16,7 @@ namespace FullForum_Application.Interfaces;
 /// <typeparam name="TEntity">The entity type managed by the repository</typeparam>
 public interface IRepository<TEntity> where TEntity : BaseEntity
 {
-    Task<TEntity> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<TEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<List<TEntity>> GetAllAsync(CancellationToken cancellationToken = default);
     Task AddAsync(TEntity entity, CancellationToken cancellationToken = default);
     Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);

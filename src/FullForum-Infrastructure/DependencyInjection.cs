@@ -1,5 +1,5 @@
 ﻿namespace FullForum_Infrastructure;
 
-public class Class1
+public class DependencyInjection
 {
 }

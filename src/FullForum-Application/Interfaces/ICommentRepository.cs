@@ -10,7 +10,7 @@ public interface ICommentRepository : IRepository<Comment>
     Task<List<Comment>> GetCommentsByThreadIdAsync(Guid threadId, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Return true if thread with Id exists
+    /// Return true if thread with ID exists
     /// </summary>
     Task<bool> ThreadExistsAsync(Guid threadId, CancellationToken cancellationToken = default);
     
