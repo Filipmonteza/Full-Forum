@@ -13,7 +13,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Contracts\Threads\" />
       <Folder Include="EndPoints\" />
       <Folder Include="http - SmokeTest\" />
       <Folder Include="Identity\" />
