@@ -1,5 +1,11 @@
 ﻿namespace FullForum_WebApi.Contracts.Categories;
 
-public sealed record CategoryResponse(Guid Id, string CategoryName, string CategoryDescription);
+
+/// Api response representing a category
+public sealed record CategoryResponse(
+    Guid Id,
+    string CategoryName,
+    string CategoryDescription
+    );
 
     
