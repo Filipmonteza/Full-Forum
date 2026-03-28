@@ -22,7 +22,13 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="FullForum-Application\UseCases\Comments\CreateComment\" />
       <Folder Include="FullForum-Application\UseCases\Comments\GetCommentsForThread\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FullForum-Application\FullForum-Application.csproj" />
+      <ProjectReference Include="..\FullForum-Domain\FullForum-Domain.csproj" />
     </ItemGroup>
 
 </Project>
