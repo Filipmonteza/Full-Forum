@@ -1,9 +1,11 @@
-﻿using FullForum_Application.UseCases.Comments.CreateComment;
+﻿using FullForum_Application.Interfaces;
+using FullForum_Application.UseCases.Comments.CreateComment;
 using FullForum_Application.UseCases.Comments.GetCommentsForThread;
 using FullForum_Application.UseCases.Threads.CreateThread;
 using FullForum_Application.UseCases.Threads.GetThreads;
 using FullForum_Infrastructure.Identity;
 using FullForum_Infrastructure.Persistence;
+using FullForum_Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -38,6 +40,10 @@ public static class DependencyInjection
         // Commands
         services.AddScoped<CreateThreadHandler>();
         services.AddScoped<CreateCommentHandler>();
+        
+        // Repositories
+        services.AddScoped<IThreadRepository, ThreadRepository>();
+        services.AddScoped<ICommentRepository, CommentRepository>();
 
         return services;
     }
