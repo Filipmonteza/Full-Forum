@@ -6,6 +6,7 @@ public sealed record CommentResponse(
     Guid ThreadId,
     Guid ApplicationUserId,
     Guid? ParentCommentId,
+    string CommentContent,
     string DisplayName,
     DateTime? DateCreated,
     bool IsDeleted

@@ -65,4 +65,3 @@ namespace FullForum_Application.UseCases.Comments.CreateComment;
             return CreateCommentResult.Ok(comment);
         }
     }
-    
