@@ -20,10 +20,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="http - SmokeTest\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\FullForum-Infrastructure\FullForum-Infrastructure.csproj" />
       <ProjectReference Include="..\FullForum-Application\FullForum-Application.csproj" />
       <ProjectReference Include="..\FullForum-Domain\FullForum-Domain.csproj" />
