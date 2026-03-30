@@ -1,0 +1,255 @@
+﻿@baseUrl = http://localhost:5085
+@email = testuser1@example.com
+@password = TestUserA123!
+
+### LOGIN
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.test("Login svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+
+    const body = response.body;
+    client.log("LOGIN response: " + JSON.stringify(body));
+
+    if (body.token) {
+        client.global.set("token", body.token);
+    } else if (body.jwt) {
+        client.global.set("token", body.jwt);
+    } else if (body.accessToken) {
+        client.global.set("token", body.accessToken);
+    } else {
+        client.assert(false, "Ingen token hittades i login-responsen");
+    }
+
+    if (body.userId) {
+        client.global.set("userId", body.userId);
+    }
+%}
+
+### ME
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    client.test("/api/auth/me svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+
+    const body = response.body;
+    client.log("ME response: " + JSON.stringify(body));
+
+    if (body.id) {
+        client.global.set("userId", body.id);
+    } else if (body.userId) {
+        client.global.set("userId", body.userId);
+    } else if (body.applicationUserId) {
+        client.global.set("userId", body.applicationUserId);
+    } else if (body.sub) {
+        client.global.set("userId", body.sub);
+    } else {
+        client.assert(false, "Kunde inte hitta userId i /api/auth/me-responsen");
+    }
+
+    client.log("userId = " + client.global.get("userId"));
+%}
+
+### GET CATEGORIES
+GET {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    client.test("GET /categories svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+
+    const body = response.body;
+    client.log("CATEGORIES response: " + JSON.stringify(body));
+
+    if (Array.isArray(body) && body.length > 0 && body[0].id != null) {
+        client.global.set("categoryId", body[0].id);
+        client.log("categoryId = " + body[0].id);
+    } else {
+        client.assert(false, "Kunde inte sätta categoryId");
+    }
+%}
+
+### GET CATEGORY BY ID
+GET {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    client.test("GET /categories/{id} svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+### CREATE THREAD
+POST {{baseUrl}}/threads
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "threadTitle": "Smoke thread {{$timestamp}}",
+  "threadContent": "Detta är ett smoke test",
+  "categoryId": "{{categoryId}}",
+  "applicationUserId": "{{userId}}"
+}
+
+> {%
+    client.test("POST /threads svarar 200/201", function() {
+        client.assert(response.status === 200 || response.status === 201, "Expected 200 or 201");
+    });
+
+    const body = response.body;
+    client.log("CREATE THREAD response: " + JSON.stringify(body));
+
+    if (body.thread && body.thread.id != null) {
+        client.global.set("threadId", body.thread.id);
+        client.log("threadId = " + body.thread.id);
+    } else if (body.id != null) {
+        client.global.set("threadId", body.id);
+        client.log("threadId = " + body.id);
+    } else {
+        client.assert(false, "Kunde inte hitta threadId i responsen");
+    }
+%}
+
+### GET THREADS
+GET {{baseUrl}}/threads
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    client.test("GET /threads svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+### GET THREAD BY ID
+GET {{baseUrl}}/threads/{{threadId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    client.test("GET /threads/{id} svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+    client.log("Verifierad threadId = " + client.global.get("threadId"));
+%}
+
+### UPDATE THREAD
+PUT {{baseUrl}}/threads/{{threadId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "threadTitle": "Smoke thread updated {{$timestamp}}",
+  "threadContent": "Uppdaterat smoke test-innehåll",
+  "categoryId": "{{categoryId}}"
+}
+
+> {%
+    client.test("PUT /threads/{id} svarar 200/204", function() {
+        client.assert(response.status === 200 || response.status === 204, "Expected 200 or 204");
+    });
+    client.log("UPDATE THREAD response: " + JSON.stringify(response.body));
+%}
+
+### CREATE COMMENT
+POST {{baseUrl}}/comments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "commentContent": "Smoke comment {{$timestamp}}",
+  "threadId": "{{threadId}}",
+  "applicationUserId": "{{userId}}"
+}
+
+> {%
+    client.test("POST /comments svarar 200/201", function() {
+        client.assert(response.status === 200 || response.status === 201, "Expected 200 or 201");
+    });
+
+    const body = response.body;
+    client.log("CREATE COMMENT response: " + JSON.stringify(body));
+
+    if (body.comment && body.comment.id != null) {
+        client.global.set("commentId", body.comment.id);
+        client.log("commentId = " + body.comment.id);
+    } else if (body.id != null) {
+        client.global.set("commentId", body.id);
+        client.log("commentId = " + body.id);
+    } else {
+        client.assert(false, "Kunde inte hitta commentId i responsen");
+    }
+%}
+
+### GET COMMENTS FOR THREAD
+GET {{baseUrl}}/threads/{{threadId}}/comments
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    client.test("GET /threads/{threadId}/comments svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+### UPDATE COMMENT
+PUT {{baseUrl}}/comments/{{commentId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "commentContent": "Updated smoke comment {{$timestamp}}"
+}
+
+> {%
+    client.test("PUT /comments/{id} svarar 200/204", function() {
+        client.assert(response.status === 200 || response.status === 204, "Expected 200 or 204");
+    });
+    client.log("UPDATE COMMENT response: " + JSON.stringify(response.body));
+%}
+
+### USER ACTIVITY
+GET {{baseUrl}}/users/{{userId}}/activity
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    client.test("GET /users/{userId}/activity svarar 200", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}
+
+### DELETE COMMENT
+DELETE {{baseUrl}}/comments/{{commentId}}
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("DELETE /comments/{id} svarar 200/204", function() {
+        client.assert(response.status === 200 || response.status === 204, "Expected 200 or 204");
+    });
+%}
+
+### DELETE THREAD
+DELETE {{baseUrl}}/threads/{{threadId}}
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("DELETE /threads/{id} svarar 200/204", function() {
+        client.assert(response.status === 200 || response.status === 204, "Expected 200 or 204");
+    });
+%}
