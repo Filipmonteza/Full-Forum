@@ -141,7 +141,7 @@ namespace FullForum_WebUi.Services;
         /// Gets activity information for a specific user.
         /// Includes threads and comments created by the user.
         /// </summary>
-        // VG: Get user activity
+        // Get user activity
         public async Task<UserActivityResponse> GetUserActivityAsync(Guid userId)
         {
             var response = await Client.GetAsync($"/users/{userId}/activity");
@@ -323,7 +323,7 @@ namespace FullForum_WebUi.Services;
         
         /// <summary>
         /// Deletes a comment by id.
-        /// </summary>
+        /// /// /// </summary>
     public async Task DeleteCommentAsync(Guid id)
     {
         var response = await Client.DeleteAsync($"/comments/{id}");
