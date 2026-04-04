@@ -1,108 +1,52 @@
-FullForum
-
-
-
-FullForum is a .NET 8 forum backend project built using a layered Clean Architecture approach.
-
-
-
-The project focuses on designing a scalable and maintainable backend for a discussion platform, with clear separation between domain, application, infrastructure, and API layers.
-
-
-
-Project Status
-
-
-
-This project is in active development.
-
-
-
-Implemented so far:
-
-
-
-Domain entities and base abstractions
-
-Application-layer DTOs and use-case handlers (threads and comments)
-
-Repository and service interfaces
-
-Infrastructure setup with Entity Framework Core, ASP.NET Identity, and SQLite
-
-
-
-In progress:
-
-
-
-Infrastructure persistence implementations
-
-Web API endpoints and composition root
-
-Database seeding and identity bootstrapping
-
-
-
-Planned:
-
-
-
-Authentication and authorization flows
-
-Pagination and filtering
-
-Validation and error handling improvements
-
-Logging and monitoring
-
-Integration with frontend client (Blazor WebAssembly)
-
-Architecture
-
-
-
-The project follows Clean Architecture principles:
-
-
-
-Domain layer contains core business logic and entities
-
-Application layer defines use cases and interfaces
-
-Infrastructure layer handles persistence and external concerns
-
-Web API acts as the entry point and composition root
-
-
-
-This structure ensures separation of concerns, testability, and scalability.
-
-
-
-Tech Stack
-
-.NET 8
-
-ASP.NET Core Web API
-
-Entity Framework Core
-
-SQLite
-
-ASP.NET Core Identity
-
-Solution Structure
-
-FullForum/
-
-&#x20; src/
-
-&#x20;   FullForum-Domain/          # Core entities and domain rules
-
-&#x20;   FullForum-Application/     # Use cases, DTOs, interfaces
-
-&#x20;   FullForum-Infrastructure/  # EF Core, Identity, persistence, seeding
-
-&#x20;   FullForum-WebApi/          # API host (composition root)
+# Full-Forum
+
+A fullstack forum application built with .NET 8 where users can register, log in, create threads and comments.
+
+## Overview
+This project is built to simulate a real-world system with a clear architecture and focus on backend structure, authentication and data handling.
+
+## Tech Stack
+- .NET 8
+- ASP.NET Core Minimal API
+- Entity Framework Core
+- SQLite
+- ASP.NET Core Identity
+- JWT Authentication
+- Blazor Server (UI)
+
+## Features
+- User authentication (JWT + Identity)
+- Role-based access (Admin/User)
+- Categories, threads and comments
+- Threaded comments (ParentCommentId)
+- Soft delete functionality
+- Structured API with ProblemDetails error handling
+- Layered architecture:
+  - Domain
+  - Application
+  - Infrastructure
+  - WebApi
+  - WebUi
+
+## Architecture
+The project follows a clean separation of concerns:
+- **Domain** – core entities and rules  
+- **Application** – business logic and use cases  
+- **Infrastructure** – database and external services  
+- **WebApi** – API endpoints and authentication  
+- **WebUi** – Blazor frontend  
+
+## What I focused on
+- Building a structured backend similar to real systems
+- Implementing authentication and authorization
+- Designing clear API endpoints
+- Handling data safely with soft delete and validation
+
+## Status
+🚧 Ongoing project – continuously improving and adding features
+
+## How to run
+1. Start API:
+```bash
+dotnet run --project src/ABFM-Forum.WebApi
 
