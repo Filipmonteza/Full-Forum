@@ -65,10 +65,17 @@ namespace FullForum_WebUi.Services;
             var response = await Client.PostAsJsonAsync(
                 "/api/auth/login",
                 new LoginRequest(email, password));
+            
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 throw new ApiProblemException("Not logged in or invalid credentials") { Status = 401 };
+           
             response.EnsureSuccessStatusCode();
-            return (await response.Content.ReadFromJsonAsync<LoginResponse>())!;
+            
+            var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+            if (result is null)
+                throw new ApiProblemException("API returned an empty or invalid login response.");
+
+            return result;
         }
 
         /// <summary>
@@ -94,10 +101,17 @@ namespace FullForum_WebUi.Services;
         public async Task<MeResponse> MeAsync()
         {
             var response = await Client.GetAsync("/api/auth/me");
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 throw new ApiProblemException("401 Unauthorized") { Status = 401 };
+
             response.EnsureSuccessStatusCode();
-            return (await response.Content.ReadFromJsonAsync<MeResponse>())!;
+
+            var result = await response.Content.ReadFromJsonAsync<MeResponse>();
+            if (result is null)
+                throw new ApiProblemException("API returned an empty or invalid user response.");
+
+            return result;
         }
 
         /// <summary>
@@ -145,14 +159,24 @@ namespace FullForum_WebUi.Services;
         public async Task<UserActivityResponse> GetUserActivityAsync(Guid userId)
         {
             var response = await Client.GetAsync($"/users/{userId}/activity");
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 throw new ApiProblemException("401 Unauthorized") { Status = 401 };
+
             if (response.StatusCode == HttpStatusCode.Forbidden)
                 throw new ApiProblemException("403 Forbidden") { Status = 403 };
+
             if (response.IsSuccessStatusCode)
-                return (await response.Content.ReadFromJsonAsync<UserActivityResponse>())!;
+            {
+                var result = await response.Content.ReadFromJsonAsync<UserActivityResponse>();
+                if (result is null)
+                    throw new ApiProblemException("API returned an empty or invalid user activity response.");
+
+                return result;
+            }
+
             Throw(await response.Content.ReadAsStringAsync());
-            return null!;
+            throw new ApiProblemException("Unexpected error while fetching user activity.");
         }
         
         /// <summary>
@@ -181,17 +205,27 @@ namespace FullForum_WebUi.Services;
         public async Task<CategoryDto> GetCategoryAsync(Guid id)
         {
             var response = await Client.GetAsync($"/categories/{id}");
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 _tokens.SetToken(null);
                 throw new ApiProblemException("Session expired. Please log in again.") { Status = 401 };
             }
+
             if (response.StatusCode == HttpStatusCode.Forbidden)
                 throw new ApiProblemException("403 Forbidden") { Status = 403 };
+
             if (response.IsSuccessStatusCode)
-                return (await response.Content.ReadFromJsonAsync<CategoryDto>())!;
+            {
+                var result = await response.Content.ReadFromJsonAsync<CategoryDto>();
+                if (result is null)
+                    throw new ApiProblemException("API returned an empty or invalid category response.");
+
+                return result;
+            }
+
             Throw(await response.Content.ReadAsStringAsync());
-            return null!;
+            throw new ApiProblemException("Unexpected error while fetching category.");
         }
         
         /// <summary>
@@ -206,31 +240,38 @@ namespace FullForum_WebUi.Services;
             {
                 url += $"&categoryId={categoryId.Value}";
             }
+           
             var response = await Client.GetAsync(url);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 _tokens.SetToken(null); 
                 throw new ApiProblemException("401 Unauthorized - Token is invalid or expired. Please log in again.") { Status = 401 };
             }
+            
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<PagedThreadsModel>() 
-                   ?? new PagedThreadsModel(new List<ThreadListItemModel>(), 0);
+            var result = await response.Content.ReadFromJsonAsync<PagedThreadsModel>();
+            return result ?? new PagedThreadsModel(new List<ThreadListItemModel>(), 0);
         }
         
-        /// <summary>
-        /// Gets a single thread by id.
-        /// Can optionally include comments in the response.
-        /// </summary>
         public async Task<ThreadModel> GetThreadAsync(Guid id, bool includeComments = false)
         {
             var url = includeComments
                 ? $"/threads/{id}?includeComments=true"
                 : $"/threads/{id}";
+
             var response = await Client.GetAsync(url);
+
             if (response.IsSuccessStatusCode)
-                return (await response.Content.ReadFromJsonAsync<ThreadModel>())!;
+            {
+                var result = await response.Content.ReadFromJsonAsync<ThreadModel>();
+                if (result is null)
+                    throw new ApiProblemException("API returned an empty or invalid thread response.");
+
+                return result;
+            }
+
             Throw(await response.Content.ReadAsStringAsync());
-            return null!;
+            throw new ApiProblemException("Unexpected error while fetching thread.");
         }
         
         /// <summary>
@@ -240,14 +281,24 @@ namespace FullForum_WebUi.Services;
         public async Task<ThreadModel> CreateThreadAsync(CreateThreadRequest dto)
         {
             var response = await Client.PostAsJsonAsync("/threads", dto);
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 throw new ApiProblemException("401 Unauthorized") { Status = 401 };
+
             if (response.StatusCode == HttpStatusCode.Forbidden)
                 throw new ApiProblemException("403 Forbidden") { Status = 403 };
+
             if (response.StatusCode == HttpStatusCode.Created)
-                return (await response.Content.ReadFromJsonAsync<ThreadModel>())!;
+            {
+                var result = await response.Content.ReadFromJsonAsync<ThreadModel>();
+                if (result is null)
+                    throw new ApiProblemException("API returned an empty or invalid created thread response.");
+
+                return result;
+            }
+
             Throw(await response.Content.ReadAsStringAsync());
-            return null!;
+            throw new ApiProblemException("Unexpected error while creating thread.");
         }
         
         /// <summary>
@@ -256,11 +307,15 @@ namespace FullForum_WebUi.Services;
         public async Task UpdateThreadAsync(Guid id, UpdateThreadRequest dto)
         {
             var response = await Client.PutAsJsonAsync($"/threads/{id}", dto);
+            
             if (response.IsSuccessStatusCode) return;
+           
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 throw new ApiProblemException("401 Unauthorized") { Status = 401 };
+            
             if (response.StatusCode == HttpStatusCode.Forbidden)
                 throw new ApiProblemException("403 Forbidden") { Status = 403 };
+            
             Throw(await response.Content.ReadAsStringAsync());
         }
         
@@ -282,70 +337,97 @@ namespace FullForum_WebUi.Services;
         /// Gets all comments for a specific thread.
         /// </summary>
         public async Task<List<CommentModel>> GetThreadCommentsAsync(Guid threadId)
-    {
-        var response = await Client.GetAsync($"/threads/{threadId}/comments");
-        if (response.IsSuccessStatusCode)
-            return await response.Content.ReadFromJsonAsync<List<CommentModel>>() ?? [];
-        Throw(await response.Content.ReadAsStringAsync());
-        return null!;
-    }
+        {
+            var response = await Client.GetAsync($"/threads/{threadId}/comments");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<CommentModel>>() ?? [];
+            }
+
+            Throw(await response.Content.ReadAsStringAsync());
+            throw new ApiProblemException("Unexpected error while fetching thread comments.");
+        }
         
         /// <summary>
         /// Creates a new comment.
         /// Returns the created comment on success.
         /// </summary>
-    public async Task<CommentModel> CreateCommentAsync(CommentCreateDto dto)
-    {
-        var response = await Client.PostAsJsonAsync("/comments", dto);
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-            throw new ApiProblemException("401 Unauthorized") { Status = 401 };
-        if (response.StatusCode == HttpStatusCode.Forbidden)
-            throw new ApiProblemException("403 Forbidden") { Status = 403 };
-        if (response.StatusCode == HttpStatusCode.Created)
-            return (await response.Content.ReadFromJsonAsync<CommentModel>())!;
-        Throw(await response.Content.ReadAsStringAsync());
-        return null!;
-    }
+        public async Task<CommentModel> CreateCommentAsync(CommentCreateDto dto)
+        {
+            var response = await Client.PostAsJsonAsync("/comments", dto);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new ApiProblemException("401 Unauthorized") { Status = 401 };
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new ApiProblemException("403 Forbidden") { Status = 403 };
+
+            if (response.StatusCode == HttpStatusCode.Created)
+            {
+                var result = await response.Content.ReadFromJsonAsync<CommentModel>();
+                if (result is null)
+                    throw new ApiProblemException("API returned an empty or invalid comment response.");
+
+                return result;
+            }
+
+            Throw(await response.Content.ReadAsStringAsync());
+            throw new ApiProblemException("Unexpected error while creating comment.");
+        }
         
         /// <summary>
         /// Updates an existing comment.
-        /// </summary>
-    public async Task UpdateCommentAsync(Guid id, CommentUpdateDto dto)
-    {
-        var response = await Client.PutAsJsonAsync($"/comments/{id}", dto);
-        if (response.IsSuccessStatusCode) return;
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        /// /// </summary>
+        public async Task UpdateCommentAsync(Guid id, CommentUpdateDto dto)
+        {
+        
+            var response = await Client.PutAsJsonAsync($"/comments/{id}", dto);
+        
+            if (response.IsSuccessStatusCode) return;
+        
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
             throw new ApiProblemException("401 Unauthorized") { Status = 401 };
-        if (response.StatusCode == HttpStatusCode.Forbidden)
+        
+            if (response.StatusCode == HttpStatusCode.Forbidden)
             throw new ApiProblemException("403 Forbidden") { Status = 403 };
-        Throw(await response.Content.ReadAsStringAsync());
-    }
+        
+            Throw(await response.Content.ReadAsStringAsync());
+            
+        }
         
         /// <summary>
         /// Deletes a comment by id.
         /// /// /// </summary>
-    public async Task DeleteCommentAsync(Guid id)
-    {
-        var response = await Client.DeleteAsync($"/comments/{id}");
-        if (response.IsSuccessStatusCode) return;
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-            throw new ApiProblemException("401 Unauthorized") { Status = 401 };
-        if (response.StatusCode == HttpStatusCode.Forbidden)
-            throw new ApiProblemException("403 Forbidden") { Status = 403 };
-        Throw(await response.Content.ReadAsStringAsync());
-    }
+    
+        public async Task DeleteCommentAsync(Guid id)
+    
+        {
+            var response = await Client.DeleteAsync($"/comments/{id}");
+            if (response.IsSuccessStatusCode) return;
+        
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new ApiProblemException("401 Unauthorized") { Status = 401 };
+        
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new ApiProblemException("403 Forbidden") { Status = 403 };
+        
+            Throw(await response.Content.ReadAsStringAsync());
+        }
         
         /// <summary>
         /// Gets all threads created by the currently authenticated user.
         /// </summary>
-    public async Task<List<ThreadListItemModel>> GetMyThreadsAsync()
-    {
-        var response = await Client.GetAsync("/threads/mine");
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-            throw new ApiProblemException("401 Unauthorized") { Status = 401 };
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<List<ThreadListItemModel>>() ?? [];
-    }
+        public async Task<List<ThreadListItemModel>> GetMyThreadsAsync()
+        { 
+            var response = await Client.GetAsync("/threads/mine");
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new ApiProblemException("401 Unauthorized") { Status = 401 };
+            
+            response.EnsureSuccessStatusCode();
+        
+            return await response.Content.ReadFromJsonAsync<List<ThreadListItemModel>>() ?? [];
+        }
         
         /// <summary>
         /// Parses API error responses and throws a mapped ApiProblemException.
