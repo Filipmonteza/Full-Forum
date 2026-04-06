@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using FullForum_WebUi;
+using FullForum_WebUi.Components.Shared;
 using FullForum_WebUi.Services;
 using FullForum_WebUi.Services.Auth;
 using FullForum_WebUi.Services.UI;
