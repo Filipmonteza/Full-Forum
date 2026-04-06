@@ -1,4 +1,4 @@
-﻿namespace FullForum_WebUi.Services.Exceptions;
+﻿namespace FullForum_WebUi.Services.Auth;
 
 /// <summary>
 /// Holds the current authentication state for the UI.

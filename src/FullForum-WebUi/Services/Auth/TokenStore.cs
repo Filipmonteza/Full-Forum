@@ -1,4 +1,4 @@
-﻿namespace FullForum_WebUi.Services;
+﻿namespace FullForum_WebUi.Services.Auth;
 
 /// <summary>
 /// Simple in-memory implementation of ITokenStore.
