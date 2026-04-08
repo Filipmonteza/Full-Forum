@@ -1,4 +1,4 @@
-﻿namespace FullForum_WebUiWebUi.Services.UI;
+﻿namespace FullForum_WebUi.Services.UI;
 
 /// <summary>
 /// Represents a UI error with a title and description.

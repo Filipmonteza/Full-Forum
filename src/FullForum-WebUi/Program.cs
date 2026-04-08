@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using FullForum_WebUi;
 using FullForum_WebUi.Components.Shared;
 using FullForum_WebUi.Services;
 using FullForum_WebUi.Services.Auth;
 using FullForum_WebUi.Services.UI;
-using FullForum_WebUiWebUi.Services;
-using FullForum_WebUiWebUi.Services.UI;
+
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
