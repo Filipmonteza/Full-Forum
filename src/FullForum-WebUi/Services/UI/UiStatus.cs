@@ -1,7 +1,4 @@
-﻿using FullForum_WebUiWebUi.Services;
-using FullForum_WebUiWebUi.Services.UI;
-
-namespace FullForum_WebUi.Services.UI;
+﻿namespace FullForum_WebUi.Services.UI;
 
 /// <summary>
 /// Shared UI status service.
