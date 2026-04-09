@@ -75,6 +75,17 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
 });
 
+// CORS (for WebUi)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("WebUi", policy =>
+        policy.WithOrigins(
+                "https://localhost:7295",
+                "http://localhost:5121")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -135,6 +146,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("WebUi");
 app.UseAuthentication();
 app.UseAuthorization();
 
