@@ -2,9 +2,10 @@
 
 A fullstack forum application built with .NET 8 where users can register, log in, create threads and comments.
 
-## 📸 API Overview (Swagger)
+## 📸 API Overview (Swagger) // And FullForum Login Page UI
 
 <img width="773" height="878" alt="API Swagger" src="https://github.com/user-attachments/assets/f91f652b-9c99-4f72-8929-757e5ffcd1e4" />
+<img width="1906" height="962" alt="image" src="https://github.com/user-attachments/assets/a2b0c207-f2ea-4a9b-8e85-60f1c2249c3c" />
 
 ## Overview
 This project is built to simulate a real-world system with a clear architecture and focus on backend structure, authentication and data handling.
