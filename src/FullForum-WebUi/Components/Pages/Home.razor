@@ -1,8 +1,161 @@
 ﻿@page "/home"
-
+@implements IDisposable
+@using FullForum_WebUi.Models.Category
+@using FullForum_WebUi.Models.Threads
+@using FullForum_WebUi.Services
+@using FullForum_WebUi.Services.Auth
+@using FullForum_WebUi.Services.Exceptions
+@using FullForum_WebUi.Services.UI
+@inject NavigationManager Nav
+@inject ApiClient Api
+@inject AuthState Auth
+@inject IUiStatus Ui
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<main class="forum-page">
+    <section class="forum-shell">
+        <div class="forum-header">
+            <h1>Welcome, @Auth.PreferredName</h1>
+            <p>Join discussions, share ideas, and connect with the community.</p>
+            <a href="/threads/create" class="btn-submit forum-cta">Create thread</a>
+        </div>
 
-Welcome to your new app.
+        <div class="forum-grid">
+            <section class="forum-card">
+                <h2>Recently updated threads</h2>
+
+                <select class="form-input forum-select"
+                        @onchange="e => _selectedCategoryId = e.Value?.ToString() is { Length: > 0 } s && Guid.TryParse(s, out var g) ? g : null">
+                    <option value="">All categories</option>
+                    @foreach (var c in _categories)
+                    {
+                        <option value="@c.Id">@c.CategoryName</option>
+                    }
+                </select>
+
+                @if (Ui.Error is not null)
+                {
+                    <div class="alert-error">
+                        <strong>@Ui.Error.Title</strong>
+                        <div>@Ui.Error.Detail</div>
+                    </div>
+                }
+                else if (Ui.IsBusy)
+                {
+                    <p class="forum-muted">Loading...</p>
+                }
+                else if (!FilteredThreads.Any())
+                {
+                    <p class="forum-muted">No threads found.</p>
+                }
+                else
+                {
+                    <div class="forum-list">
+                        @foreach (var t in FilteredThreads)
+                        {
+                            <a href="@($"/threads/{t.Id}")" class="forum-item">
+                                <h3>@t.ThreadTitle</h3>
+                                <p>
+                                    @(t.ThreadContent.Length > 180
+                                        ? t.ThreadContent[..180] + "..."
+                                        : t.ThreadContent)
+                                </p>
+                                <small>
+                                    @t.DisplayName · @GetCategoryName(t.CategoryId) ·
+                                    @FormatDate(t.UpdatedAt ?? t.CreatedAt) ·
+                                    @t.CommentCount comment@(t.CommentCount == 1 ? "" : "s")
+                                </small>
+                            </a>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="forum-card">
+                <h2>Categories</h2>
+
+                @if (_categories.Count == 0 && !Ui.IsBusy)
+                {
+                    <p class="forum-muted">No categories found.</p>
+                }
+                else
+                {
+                    <div class="forum-list">
+                        @foreach (var c in _categories)
+                        {
+                            <a href="@($"/categories/{c.Id}")" class="forum-item">
+                                <h3>@c.CategoryName</h3>
+                                <p>@c.CategoryDescription</p>
+                            </a>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+    </section>
+</main>
+
+@code {
+    private List<CategoryDto> _categories = [];
+    private List<ThreadListItemModel> _threads = [];
+    private Guid? _selectedCategoryId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.OnChanged += HandleAuthChanged;
+
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        Ui.SetError(null);
+        Ui.Offline(false);
+        Ui.Busy(true);
+
+        try
+        {
+            _categories = await Api.GetCategoriesAsync();
+            _threads = (await Api.GetThreadsAsync(pageSize: 50)).Items
+                .OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt)
+                .ToList();
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Session expired", "Please log in again."));
+        }
+        catch (ApiProblemException ex)
+        {
+            Ui.SetError(new UiError("API error", ex.Message));
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false);
+        }
+    }
+
+    private IEnumerable<ThreadListItemModel> FilteredThreads =>
+        _selectedCategoryId is null
+            ? _threads.Take(5)
+            : _threads.Where(t => t.CategoryId == _selectedCategoryId).Take(5);
+
+    private string GetCategoryName(Guid categoryId) =>
+        _categories.FirstOrDefault(c => c.Id == categoryId)?.CategoryName ?? "Unknown";
+
+    private static string FormatDate(DateTime dt) => dt.ToString("yyyy-MM-dd HH:mm");
+
+    private void HandleAuthChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Auth.OnChanged -= HandleAuthChanged;
+}

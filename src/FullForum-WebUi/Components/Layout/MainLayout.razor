@@ -1,16 +1,111 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu/>
-    </div>
+﻿@using FullForum_WebUi.Components.Shared
+@using FullForum_WebUi.Services
+@using FullForum_WebUi.Services.Auth
+@inject IJSRuntime JS
+@inject AuthState Auth
+@inject ITokenStore Tokens
+@inject NavigationManager Nav
+@inherits LayoutComponentBase
+
+@if (_authChecked)
+{
+    <header>
+        <NavMenu />
+    </header>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+        <RoleGate RedirectTo="/login" Ready="@_authChecked">
             @Body
-        </article>
+        </RoleGate>
     </main>
+}
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private bool _authChecked = false;
+
+    // Restore auth state from saved token
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var token = await JS.InvokeAsync<string?>("localStorage.getItem", "auth_token");
+        if (!string.IsNullOrEmpty(token))
+        {
+            if (TryRestoreFromToken(token, out var userId, out var role, out var email, out var displayName))
+            {
+                Tokens.SetToken(token);
+                Auth.SignIn(userId, role, string.IsNullOrEmpty(displayName) ? email : displayName);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("localStorage.removeItem", "auth_token");
+            }
+        }
+        _authChecked = true;
+
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        StateHasChanged();
+    }
+    // Read auth values from JWT token
+    private static bool TryRestoreFromToken(string token,
+        out Guid userId, out string role, out string email, out string displayName)
+    {
+        userId = Guid.Empty;
+        role = "User";
+        email = "";
+        displayName = "";
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length != 3) return false;
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("exp", out var expProp) &&
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds() > expProp.GetInt64())
+                return false;
+            if (!root.TryGetProperty("sub", out var subProp)) return false;
+            if (!Guid.TryParse(subProp.GetString(), out userId)) return false;
+            if (root.TryGetProperty("email", out var emailProp))
+                email = emailProp.GetString() ?? "";
+            if (root.TryGetProperty("displayName", out var displayNameProp))
+                displayName = displayNameProp.GetString() ?? "";
+            
+            if (root.TryGetProperty("role", out var roleProp))
+            {
+                if (roleProp.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    var roles = roleProp.EnumerateArray()
+                        .Select(r => r.GetString() ?? "")
+                        .ToList();
+                    role = roles.Contains("Admin") ? "Admin" : "User";
+                }
+                else
+                {
+                    role = roleProp.GetString() == "Admin" ? "Admin" : "User";
+                }
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}

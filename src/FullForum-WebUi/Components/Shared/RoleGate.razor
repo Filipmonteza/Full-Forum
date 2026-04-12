@@ -1,0 +1,26 @@
+﻿@using FullForum_WebUi.Services.Auth
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+@if (Ready && IsAllowed)
+{
+    @ChildContent
+}
+
+@code {
+   
+    [Parameter] public IEnumerable<string> Roles { get; set; } = Array.Empty<string>();
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Ready { get; set; } = true;
+    [Parameter] public string RedirectTo { get; set; } = "";
+    // Checks if the user is authenticated and has a valid role
+    private bool IsAllowed =>
+        Auth.IsAuthenticated &&
+        (!Roles.Any() || Roles.Contains(Auth.Role ?? "", StringComparer.OrdinalIgnoreCase));
+    // Runs after the component renders
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (Ready && !IsAllowed && !string.IsNullOrEmpty(RedirectTo))
+            Nav.NavigateTo(RedirectTo);
+    }
+}
