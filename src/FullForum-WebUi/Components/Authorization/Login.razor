@@ -6,15 +6,12 @@
 @using FullForum_WebUi.Services.Auth
 @using FullForum_WebUi.Services.Exceptions
 @using FullForum_WebUi.Services.UI
-@using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.AspNetCore.Components.Web
-@using Microsoft.JSInterop
 @inject ApiClient Api
 @inject ITokenStore Tokens
 @inject AuthState Auth
 @inject IUiStatus Ui
 @inject NavigationManager Nav
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <PageTitle>Login</PageTitle>
 
@@ -95,7 +92,7 @@
         {
             var result = await Api.LoginAsync(model.Email, model.Password);
             Tokens.SetToken(result.Token);
-            await JS.InvokeVoidAsync("localStorage.setItem", "auth_token", result.Token);
+            await Js.InvokeVoidAsync("localStorage.setItem", "auth_token", result.Token);
 
             var role = result.Roles.Contains("Admin") ? "Admin" : "User";
             var name = result.DisplayName ?? result.Email ?? model.Email;
