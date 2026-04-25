@@ -1,0 +1,203 @@
+﻿@page "/threads/create"
+@using System.ComponentModel.DataAnnotations
+@using FullForum_WebUi.Models.Threads
+@using FullForum_WebUi.Services
+@using FullForum_WebUi.Services.Auth
+@using FullForum_WebUi.Services.Exceptions
+
+@using FullForum_WebUi.Models.Category
+@using FullForum_WebUi.Services.UI
+@inject ApiClient Api
+@inject IUiStatus Ui
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Create Thread</PageTitle>
+
+<div class="threads-page">
+    <p><a href="/home" class="back-link">&lt; Back to Home</a></p>
+
+    <div class="card categories-container">
+        <h2>Create a Thread</h2>
+
+        @if (!Auth.IsAuthenticated)
+        {
+            <div class="alert alert-danger">
+                <strong>Not logged in</strong>
+            </div>
+            <button type="button" class="btn-submit" @onclick='() => Nav.NavigateTo("/login")'>
+                Go to login
+            </button>
+        }
+        else
+        {
+            @if (Ui.Error is not null)
+            {
+                <div class="alert alert-danger">
+                    <strong>@Ui.Error.Title</strong>
+                    <div>@Ui.Error.Detail</div>
+                </div>
+            }
+
+            <EditForm Model="@model" OnValidSubmit="CreateAsync">
+                <DataAnnotationsValidator />
+                <div class="card-inner">
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <InputSelect id="category" @bind-Value="model.CategoryId" class="form-input">
+                            <option value="">-- Select a category --</option>
+                            @foreach (var c in _categories)
+                            {
+                                <option value="@c.Id">@c.CategoryName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => model.CategoryId" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="title">What's the title?</label>
+                        <InputText id="title" @bind-Value="model.Title" class="form-input" @onblur="CheckTitleAsync" />
+                        <ValidationMessage For="() => model.Title" />
+                        @if (_titleTakenMessage is not null)
+                        {
+                            <div class="validation-message">@_titleTakenMessage</div>
+                        }
+                    </div>
+
+                    <div class="form-group">
+                        <label for="content">Write your thread</label>
+                        <InputTextArea id="content" @bind-Value="model.Content" class="form-input" rows="4" />
+                        <ValidationMessage For="() => model.Content" />
+                    </div>
+
+                    <button type="submit" class="btn-submit" disabled="@Ui.IsBusy">
+                        @(Ui.IsBusy ? "Creating..." : "Create thread")
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    private CreateThreadModel model = new(); // Form model bound to EditForm
+    private List<CategoryDto> _categories = new(); // Categories loaded from the Api
+    private string? _titleTakenMessage; // Warning message if the title is already taken
+
+    /// <summary>
+    /// Form model for creating a new thread, with validation attributes
+    /// </summary>
+    private sealed class CreateThreadModel
+    {
+        [Required(ErrorMessage = "Select a category")]
+        public Guid? CategoryId { get; set; }
+        [Required(ErrorMessage = "Title is required")]
+        public string Title { get; set; } = "";
+        [Required(ErrorMessage = "Content is required")]
+        public string Content { get; set; } = "";
+    }
+
+    /// <summary>
+    /// Loads available categories from the Api on page initialization
+    /// Redirects unauthenticated users to the home page
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        Ui.SetError(null);
+        try
+        {
+            _categories = await Api.GetCategoriesAsync();
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (ApiProblemException ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Check whether title already exists in the selected category
+    /// Called on blur for feedback before the user submits
+    /// </summary>
+    private async Task CheckTitleAsync()
+    {
+        _titleTakenMessage = null;
+        if (string.IsNullOrWhiteSpace(model.Title) || !model.CategoryId.HasValue) return;
+        try
+        {
+            var threads = await Api.GetThreadsAsync(categoryId: model.CategoryId.Value);
+            var taken = threads.Items.Any(t => string.Equals(t.ThreadTitle, model.Title.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (taken)
+                _titleTakenMessage = "That title is already taken in this category.";
+        }
+        catch
+        {
+
+        }
+    }
+
+    /// <summary>
+    /// Validates and submits the form and creates a new thread via Api
+    /// Navigates to new thread on success
+    /// </summary>
+    private async Task CreateAsync()
+    {
+        Ui.SetError(null);
+        Ui.Offline(false);
+        _titleTakenMessage = null;
+
+        if (!Auth.IsAuthenticated)
+        {
+            Ui.SetError(new UiError("401 Unauthorized", "You must login to create a thread."));
+            return;
+        }
+
+        await CheckTitleAsync();
+        if (_titleTakenMessage is not null) return; // Cancel if title is taken
+
+        Ui.Busy(true);
+        try
+        {
+            var dto = new CreateThreadRequest(
+                ThreadTitle: model.Title,
+                ThreadContent: model.Content,
+                CategoryId: model.CategoryId!.Value
+            );
+            
+            var created = await Api.CreateThreadAsync(dto);
+            Nav.NavigateTo($"/threads/{created.Id}");
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Unauthorized", "Please login again."));
+            Nav.NavigateTo("/login");
+        }
+        catch (ApiProblemException ex) when (ex.Status == 403)
+        {
+            Ui.SetError(new UiError("Forbidden", "You don't have permission to create a thread."));
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false); // Re-enable submit-button
+        }
+    }
+}

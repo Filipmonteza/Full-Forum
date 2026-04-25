@@ -232,7 +232,7 @@ namespace FullForum_WebUi.Services;
         /// Gets a paged list of threads.
         /// Supports optional category filtering, paging, and sorting.
         /// </summary>
-        // VG: sortBy accepts date or comments
+        // sortBy accepts date or comments
         public async Task<PagedThreadsModel> GetThreadsAsync(Guid? categoryId = null, int page = 1, int pageSize = 5, string sortBy = "date", bool descending = true)
         {
             var url = $"/threads?page={page}&pageSize={pageSize}&sortBy={sortBy}&descending={descending}";

@@ -1,0 +1,74 @@
+﻿@page "/categories"
+@using FullForum_WebUi.Models.Category
+@using FullForum_WebUi.Services
+@using FullForum_WebUi.Services.UI
+@inject ApiClient Api
+@inject IUiStatus Ui
+
+
+<PageTitle>Categories</PageTitle>
+
+<div class="categories-page">
+    <div class="card categories-container">
+        <h2>Categories</h2>
+
+        @if (Ui.Error is not null)
+        {
+            <div class="alert alert-danger">
+                <strong>@Ui.Error.Title</strong>
+                <div>@Ui.Error.Detail</div>
+            </div>
+        }
+        else if (Ui.IsBusy)
+        {
+            <p style="color:#aaaaaa;">Loading...</p>
+        }
+        else if (_categories.Count == 0)
+        {
+            <p style="color:#aaaaaa;">No categories found.</p>
+        }
+        else
+        {
+            <div class="categories-grid-alt-1">
+                @foreach (var c in _categories)
+                {
+                    <a href="@($"/categories/{c.Id}")" class="card-inner">
+                        <div><h3>@c.CategoryName</h3></div>
+                        <div><h4>@c.CategoryDescription</h4></div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<CategoryDto> _categories = new(); // Categories loaded from Api
+
+    /// <summary>
+    /// Load all categories from Api on initialization
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        Ui.SetError(null);
+        Ui.Offline(false);
+        Ui.Busy(true);
+        try
+        {
+            _categories = await Api.GetCategoriesAsync();
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false); // Re-enable submit-button
+        }
+    }
+}
