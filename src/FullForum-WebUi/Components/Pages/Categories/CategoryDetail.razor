@@ -63,7 +63,7 @@
                         </div>
                     </div>
                     
-                    @* VG: Sorting keys *@
+                    @* Sorting keys *@
                     <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
                         <span style="color:white;">Sort by:</span>
                         <button @onclick="() => SetSort(SortKey.Date)" style="color:white; background:none; border:none; box-shadow:none; padding:0.3rem 0.7rem; cursor:pointer; font-size:1rem;">
@@ -110,8 +110,8 @@
     int _totalPages = 1; // Total n of pages
 
     private enum SortKey { Date, Comments } // Options for sorting
-    private SortKey _currentSortKey = SortKey.Date; // VG: Active sorting key
-    private bool _descending = true; // VG: Sort direction (true= descending)
+    private SortKey _currentSortKey = SortKey.Date; //
+    private bool _descending = true; // Sort direction (true= descending)
 
     /// <summary>
     /// Loads category and threads when parameters change

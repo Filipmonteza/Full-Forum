@@ -284,3 +284,196 @@ html, body {
 #blazor-error-ui .dismiss {
     cursor: pointer;
 }
+/* =========================================
+   CREATE THREAD — STANDARD PAGE STYLE
+   ========================================= */
+
+.threads-page {
+    min-height: 100vh;
+    padding: 2rem;
+    background:
+            radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 30%),
+            radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.12), transparent 30%),
+            #0f172a;
+}
+
+/* Back link (same style as forum/login links) */
+.threads-page > p > a {
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.15s ease;
+}
+
+.threads-page > p > a:hover {
+    color: #e2e8f0;
+}
+
+/* Main card */
+.threads-page .card.categories-container {
+    max-width: 760px;
+    margin: 0 auto;
+
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 16px;
+    padding: 1.5rem;
+
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.threads-page .card.categories-container h2 {
+    margin: 0 0 1.25rem 0;
+    color: #fff;
+}
+
+/* Form layout (same system as login) */
+.card-inner {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Form groups */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: #cbd5e1;
+}
+
+/* Inputs */
+.form-input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+
+    border: 1px solid #334155;
+    background: #0b1220;
+    color: #fff;
+
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-size: 1rem;
+}
+
+.form-input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+/* Submit button (same as login/forum CTA) */
+.btn-submit {
+    width: 100%;
+    margin-top: 0.5rem;
+
+    padding: 0.95rem 1rem;
+    border: none;
+    border-radius: 12px;
+
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
+
+    font-size: 1rem;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.2s ease;
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Alerts (same system as login) */
+.alert.alert-danger {
+    margin-bottom: 1rem;
+    padding: 0.9rem 1rem;
+
+    border-radius: 12px;
+    background: rgba(127, 29, 29, 0.25);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    color: #fecaca;
+}
+
+/* Validation */
+.validation-message {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+    color: #fca5a5;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .threads-page {
+        padding: 1rem;
+    }
+
+    .threads-page .card.categories-container {
+        padding: 1.25rem;
+    }
+}
+select.form-input,
+textarea.form-input,
+input.form-input {
+    background-color: #0b1220 !important;
+    color: #e5e7eb !important;
+    border: 1px solid #334155 !important;
+
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* Fix dropdown arrow visibility */
+select.form-input {
+    background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+    linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+    background-position: calc(100% - 20px) calc(1em + 2px),
+    calc(100% - 15px) calc(1em + 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.form-input.valid,
+.form-input.invalid {
+    background-color: #0b1220 !important;
+    color: #e5e7eb !important;
+}
+
+/* =========================================
+   HOME / CATEGORY — THREAD LIST
+   ========================================= */
+
+.home-threads-list .home-thread-item {
+    display: block;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    background: #0b1220;
+    text-decoration: none;
+    color: #e5e7eb;
+    transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.home-threads-list .home-thread-item:hover {
+    border-color: #60a5fa;
+    transform: translateY(-1px);
+    text-decoration: none;
+    color: #e5e7eb;
+}
+
+.home-threads-list .home-thread-item h3 {
+    margin: 0 0 0.35rem 0;
+    color: #93c5fd;
+    font-size: 1rem;
+}
