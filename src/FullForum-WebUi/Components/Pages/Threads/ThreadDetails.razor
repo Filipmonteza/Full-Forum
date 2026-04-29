@@ -1,0 +1,605 @@
+﻿@page "/threads/{Id:guid}"
+@using System.ComponentModel.DataAnnotations
+@using FullForum_WebUi.Models.Comments.Requests
+@using FullForum_WebUi.Models.Threads
+@using FullForum_WebUi.Services
+@using FullForum_WebUi.Services.Auth
+@using FullForum_WebUi.Services.Exceptions
+@using FullForum_WebUi.Services.UI
+
+@using FullForum_WebUi.Models.Comments
+@inject ApiClient Api
+@inject IUiStatus Ui
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Thread</PageTitle>
+
+<div class="threads-page">
+     <button class="btn-submit"
+                    style="margin-bottom:1rem;"
+                    @onclick="GoBack">
+                Back
+     </button>
+        
+        @if (Ui.Error is not null)
+        {
+            <div class="alert alert-danger">
+                <strong>@Ui.Error.Title</strong>
+                <div>@Ui.Error.Detail</div>
+            </div>
+        }
+
+        <div class="card categories-container" style="margin-bottom:3rem;">
+
+            @if (_thread is null)
+            {
+                <p style="color:#aaa;">Loading...</p>
+            }
+            else
+            {            
+                <h1 style="color: white; margin-bottom:0.5rem;">@_thread.ThreadTitle</h1>
+
+                <div class="home-thread-meta" style="margin-bottom:1.25rem;">
+                    <span class="home-meta-item"><i class="bi bi-person"></i> @_thread.DisplayName</span>
+                    <span class="home-meta-item"><i class="bi bi-clock"></i> @FormatDateTime(_thread.CreatedAt)</span>
+                    @if (_commentsLoaded)
+                    {
+                        @* Pluralizes comment based on count *@
+                        <span class="home-meta-item"><i class="bi bi-chat"></i> @_comments.Count comment@(_comments.Count == 1 ? "" : "s")</span>
+                    }
+                    @if (_thread.UpdatedAt is not null)
+                    {
+                        <span class="home-meta-item">Updated: @FormatDateTime(_thread.UpdatedAt.Value)</span>
+                    }
+                </div>
+
+                <p class="card-inner">@_thread.ThreadContent</p>
+            
+                @if (CanEditOrDeleteThread())
+                {
+                    <div style="display:flex; gap:8px; margin-top:1rem;">                    
+                        <button class="btn-submit" style="margin:0;" disabled="@Ui.IsBusy" @onclick="DeleteThreadAsync">
+                            @(Ui.IsBusy ? "Deleting..." : "Delete Thread")
+                        </button>
+
+                        <button class="btn-submit" style="margin:0;" disabled="@Ui.IsBusy"
+                                @onclick='() => Nav.NavigateTo($"/threads/{Id}/edit")'>
+                            Edit
+                        </button>
+                    </div>
+                }
+            
+                <h2 style="margin-top:2rem;">Comments</h2>
+
+                @if (_commentsLoadError is not null)
+                {
+                    <p style="color:#f88;">@_commentsLoadError</p>
+
+                    @if (!_commentsLoaded && !Auth.IsAuthenticated)
+                    {
+                        <button class="btn-submit" @onclick='() => Nav.NavigateTo("/login")'>Go to login</button>
+                    }
+                }
+                else if (!_commentsLoaded)
+                {
+                    <p style="color:#aaa;">Loading comments...</p>
+                }
+                else if (_comments.Count == 0)
+                {
+                    <p style="color:#aaa;">No comments yet.</p>
+                }
+                else
+                {
+                    <div class="fb-thread">
+                        @{
+                            @* Toplevel comment (no parent) *@
+                            var rootList = _childrenByParent[null]
+                                .OrderBy(c => c.CreatedAt)
+                                .ToList();
+                        }
+
+                        @for (int i = 0; i < rootList.Count; i++)
+                        {
+                            @RenderCommentNode(rootList[i], isRoot: true, isLast: i == rootList.Count - 1)
+                        }
+                    </div>
+                }
+            
+                <h2 style="margin-top:2rem;">Add comment</h2>
+
+                @if (!Auth.IsAuthenticated)
+                {
+                    <p style="color:#aaa;">Login to comment.</p>
+                    <button class="btn-submit" @onclick='() => Nav.NavigateTo("/login")'>Go to login</button>
+                }
+                else
+                {
+                    <EditForm Model="@_commentModel" OnValidSubmit="CreateCommentAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="form-group" style="margin-bottom:0;">
+                            <InputTextArea @bind-Value="_commentModel.CommentContent" class="form-input" />
+                            <ValidationMessage For="() => _commentModel.CommentContent" />
+                        </div>
+
+                        <button type="submit" class="btn-submit" style="margin-bottom:0;" disabled="@Ui.IsBusy">
+                            @(Ui.IsBusy ? "Posting..." : "Post Comment")
+                        </button>
+                    </EditForm>
+                }
+            }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; } // Route parameter from URL
+    private readonly HashSet<Guid> _expanded = new(); // Tracks which comment threads are expanded
+    private void GoBack() => Nav.NavigateTo("/home");
+
+    private void ToggleReplies(Guid commentId)
+    {
+        if (!_expanded.Add(commentId)) // Return false if already present
+            _expanded.Remove(commentId);
+    }
+
+    private bool IsExpanded(Guid commentId) => _expanded.Contains(commentId); // Track which comments are expanded
+    private CommentModel? _replyToComment; // The comment being replied to
+
+    /// <summary>
+    /// Set active reply target and clear reply form
+    /// </summary>
+    /// <param name="c"></param>
+    private void SetReplyTo(CommentModel c)
+    {
+        _replyToComment = c;
+        _replyModel.CommentContent = ""; 
+        _expanded.Add(c.Id);
+    }
+
+    /// <summary>
+    /// Clears active reply target and reset reply form
+    /// </summary>
+    private void ClearReplyTo()
+    {
+        _replyToComment = null;
+        _replyModel.CommentContent = "";
+    } 
+
+    private ThreadModel? _thread; // Thread loaded from Api
+    private List<CommentModel> _comments = new(); // List of all comments
+    private ILookup<Guid?, CommentModel> _childrenByParent =
+        Enumerable.Empty<CommentModel>().ToLookup(_ =>(Guid?)null); // Comments indexed by parent Id
+    private bool _commentsLoaded = false; // Whether comments have been fetched
+    private string? _commentsLoadError = null; // Error message if comments fail to load
+    private CommentFormModel _commentModel = new(); // Form model for replies
+
+    /// <summary>
+    /// Form model for posting main comment
+    /// </summary>
+    private sealed class CommentFormModel
+    {
+        [Required(ErrorMessage = "Comment is required")]
+        [MinLength(1, ErrorMessage = "Comment cannot be empty")]
+        public string CommentContent { get; set; } = "";
+    }
+    private ReplyFormModel _replyModel = new();
+
+    /// <summary>
+    /// Form model for psoting reply to comment
+    /// </summary>
+    private sealed class ReplyFormModel
+    {
+        [Required(ErrorMessage = "Comment is required")]
+        [MinLength(1, ErrorMessage = "Comment cannot be empty")]
+        public string CommentContent { get; set; } = "";
+    }
+
+    /// <summary>
+    /// Redirects unauthenticated users to the home page
+    /// Loads the thread
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    /// <summary>
+    /// Fetches thread and comments from Api
+    /// </summary>
+    private async Task LoadAsync()
+    {
+        Ui.SetError(null);
+        Ui.Offline(false);
+        Ui.Busy(true);
+        _commentsLoaded = false;
+        _commentsLoadError = null;
+        try
+        {
+            _thread = await Api.GetThreadAsync(Id);
+            await LoadCommentsAsync();
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Unauthorized", "Please login again."));
+            Nav.NavigateTo("/login");
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false);
+        }
+    }
+
+    /// <summary>
+    /// Fetches all comments for thread and index by Parent Id
+    /// </summary>
+    /// <returns></returns>
+    private async Task LoadCommentsAsync()
+    {
+        try
+        {
+            _comments = await Api.GetThreadCommentsAsync(Id);
+            _childrenByParent = _comments.ToLookup(c => c.ParentCommentId); // Index comments by parent for rendering
+            _commentsLoaded = true;
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            _commentsLoaded = false;
+            _commentsLoadError = "You must be logged in to view comments.";
+        }
+        catch (ApiProblemException ex)
+        {
+            _commentsLoaded = false;
+            _commentsLoadError = $"Could not load comments: {ex.Message}";
+        }
+        catch (HttpRequestException)
+        {
+            _commentsLoaded = false;
+            _commentsLoadError = "Cannot reach server to load comments.";
+        }
+    }
+
+    /// <summary>
+    /// Return true is user is Admin
+    /// </summary>
+    private bool IsAdmin()
+        => string.Equals(Auth.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Return true if user owns thread
+    /// </summary>
+    private bool IsThreadOwner()
+        => Auth.UserId.HasValue && _thread is not null && _thread.ApplicationUserId == Auth.UserId.Value;
+
+    /// <summary>
+    /// Return true if user is authenticated to edit or delete thread (owner & admin)
+    /// </summary>
+    private bool CanEditOrDeleteThread()
+        => Auth.IsAuthenticated && (IsAdmin() || IsThreadOwner());
+
+    /// <summary>
+    /// Return true if user is authenticated to delete comment (owner & admin)
+    /// </summary>
+    /// <param name="c"></param>
+    private bool CanDeleteComment(CommentModel c)
+    {
+        if (!Auth.IsAuthenticated) return false;
+        if (IsAdmin()) return true;
+        return Auth.UserId.HasValue && c.ApplicationUserId == Auth.UserId.Value;
+    }
+    /// <summary>
+    /// Delete thread via Api and navigate to category page
+    /// </summary>
+    private async Task DeleteThreadAsync()
+    {
+        Ui.SetError(null);
+        Ui.Offline(false);
+        Ui.Busy(true);
+
+        try
+        {
+            if (_thread is null)
+                return;
+            var categoryId = _thread.CategoryId;
+            await Api.DeleteThreadAsync(Id);
+            Nav.NavigateTo($"/categories/{categoryId}");
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Unauthorized", "Please login again."));
+            Nav.NavigateTo("/login");
+        }
+        catch (ApiProblemException ex) when (ex.Status == 403)
+        {
+            Ui.SetError(new UiError("Forbidden", "You don't have permission to delete this thread."));
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false); // Re-enable submit-button
+        }
+    }
+
+    /// <summary>
+    /// Validate and submit main comment via Api
+    /// </summary>
+    /// <returns></returns>
+    private async Task CreateCommentAsync()
+    { 
+        Ui.SetError(null);
+        Ui.Offline(false);
+
+        if (!Auth.IsAuthenticated || !Auth.UserId.HasValue)
+        {
+            Ui.SetError(new UiError("Not logged in", "Login to comment."));
+            return;
+        }
+        Ui.Busy(true);
+        try
+        {
+            var dto = new CommentCreateDto(
+                CommentContent: _commentModel.CommentContent,
+                ThreadId: Id,
+                ParentCommentId: null
+            );
+            await Api.CreateCommentAsync(dto);
+            _commentModel.CommentContent = "";
+            _replyToComment = null;
+            await LoadCommentsAsync();
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Unauthorized", "Please login again."));
+            Nav.NavigateTo("/login");
+        }
+        catch (ApiProblemException ex) when (ex.Status == 403)
+        {
+            Ui.SetError(new UiError("Forbidden", "You don't have permission to comment."));
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false); // Re-enable submit-button
+        }
+    }
+
+    /// <summary>
+    /// Validate and submit reply to existing comment
+    /// </summary>
+    private async Task CreateReplyAsync()
+    {
+        Ui.SetError(null);
+        Ui.Offline(false);
+        if(!Auth.IsAuthenticated || !Auth.UserId.HasValue)
+        {
+            Ui.SetError(new UiError("Not logged in", "Login to comment."));
+            return;
+        }
+        if (_replyToComment is null)
+            return;
+
+        Ui.Busy(true);
+
+        try
+        {
+            var dto = new CommentCreateDto(
+                CommentContent: _replyModel.CommentContent,
+                ThreadId: Id,
+                ParentCommentId: _replyToComment.Id
+            );
+
+            await Api.CreateCommentAsync(dto);
+            _replyModel.CommentContent = "";
+            _replyToComment = null;
+            await LoadCommentsAsync();
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Unauthorized", "Please login again."));
+            Nav.NavigateTo("/login");
+        }
+        catch (ApiProblemException ex) when (ex.Status == 403)
+        {
+            Ui.SetError(new UiError("Forbidden", "You don't have permission to comment."));
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false); // Re-enable submit-button
+        }
+    }
+
+    /// <summary>
+    /// Delete comment via Api and reload comment list
+    /// </summary>
+    /// <param name="commentId"></param>
+    private async Task DeleteCommentAsync(Guid commentId)
+    {
+        Ui.SetError(null);
+        Ui.Offline(false);
+        Ui.Busy(true);
+        try
+        {
+            await Api.DeleteCommentAsync(commentId);
+            await LoadCommentsAsync();
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Unauthorized", "Please login again."));
+            Nav.NavigateTo("/login");
+        }
+        catch (ApiProblemException ex) when (ex.Status == 403)
+        {
+            Ui.SetError(new UiError("Forbidden", "You don't have permission to delete this comment."));
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false); // Re-enable submit-button
+        }
+    }
+
+    /// <summary>
+    /// Format DateTime
+    /// </summary>
+    /// <param name="dt"></param>
+    private static string FormatDateTime(DateTime dt) => dt.ToString("yyyy-MM-dd HH:mm"); 
+
+    /// <summary>
+    /// Render comment node and its children
+    /// </summary>
+    /// <param name="c"></param>
+    /// <param name="isRoot"></param>
+    /// <param name="isLast"></param>
+    private RenderFragment RenderCommentNode(CommentModel c, bool isRoot, bool isLast = false) =>
+         @<div class="fb-row @(isRoot ? "root" : "")">
+             <div class="fb-main">
+                 <div class="fb-bubble">
+                     @if (c.IsDeleted)
+                     {
+                         <div class="fb-text" style="font-style:italic; color:#888;">
+                             Comment has been removed
+                         </div>
+                     }
+                     else
+                     {
+                         <div class="fb-name">@c.DisplayName</div>
+                         <div class="fb-text">@c.CommentContent</div>
+                     }
+                 </div>
+
+                 <div class="fb-meta">
+                     <span class="fb-time">@FormatDateTime(c.CreatedAt)</span>
+
+                     @if (Auth.IsAuthenticated && !c.IsDeleted)
+                     {
+                         <button type="button"
+                                 class="fb-link"
+                                 disabled="@Ui.IsBusy"
+                                 @onclick="@(() =>
+                                           {
+                                               if (_replyToComment?.Id == c.Id)
+                                                   ClearReplyTo();
+                                               else
+                                                   SetReplyTo(c);
+                                           })">
+                             @(_replyToComment?.Id == c.Id ? "Cancel" : "Reply")
+                         </button>
+                     }
+
+                     @if (!c.IsDeleted && CanDeleteComment(c))
+                     {
+                         <button type="button"
+                                 class="fb-link"
+                                 disabled="@Ui.IsBusy"
+                                 @onclick="() => DeleteCommentAsync(c.Id)">
+                             Remove
+                         </button>
+                     }
+                 </div>
+                 @if (Auth.IsAuthenticated && _replyToComment?.Id == c.Id)
+                 {
+                     <div style="margin-left:12px; margin-top:8px;">
+                         <EditForm Model="@_replyModel" OnValidSubmit="CreateReplyAsync">
+                             <DataAnnotationsValidator />
+
+                             <div class="form-group" style="margin:0;">
+                                 <InputTextArea @bind-Value="_replyModel.CommentContent"
+                                                class="form-input"
+                                                style="min-height:70px;" />
+                                 <ValidationMessage For="() => _replyModel.CommentContent" />
+                             </div>
+
+                             <div style="display:flex; gap:8px; margin-top:8px;">
+                                 <button type="submit"
+                                         class="btn-submit"
+                                         disabled="@Ui.IsBusy"
+                                         style="margin:0;">
+                                     @(Ui.IsBusy ? "Posting..." : "Reply")
+                                 </button>
+
+                                 <button type="button"
+                                         class="btn-submit"
+                                         disabled="@Ui.IsBusy"
+                                         style="margin:0;"
+                                         @onclick="ClearReplyTo">
+                                     Cancel
+                                 </button>
+                             </div>
+                         </EditForm>
+                     </div>
+                 }
+
+                 @{
+                     var children = _childrenByParent![c.Id].OrderBy(x => x.CreatedAt).ToList();
+                     var hasChildren = children.Count > 0;
+                 }
+
+                 @if (hasChildren)
+                 {
+                     <button type="button"
+                             class="fb-link fb-toggle"
+                             disabled="@Ui.IsBusy"
+                             @onclick="() => ToggleReplies(c.Id)">
+                         @(IsExpanded(c.Id) ? "Hide response" : $"Show {children.Count} repl{(children.Count == 1 ? "y" : "ies")}")
+                     </button>
+                 }
+
+                 @if (hasChildren && IsExpanded(c.Id))
+                 {
+                     <div class="fb-children">
+                         @for (int i = 0; i < children.Count; i++)
+                         {
+                             @RenderCommentNode(children[i], isRoot: false, isLast: i == children.Count - 1)
+                         }
+                     </div>
+                 }
+             </div>
+         </div>;
+    }

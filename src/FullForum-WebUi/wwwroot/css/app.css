@@ -477,3 +477,261 @@ select.form-input {
     color: #93c5fd;
     font-size: 1rem;
 }
+
+/* ===== Facebook-like comments (without Like) ===== */
+
+.fb-thread{
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+}
+
+.fb-comment{
+    display:flex;
+    gap: 10px;
+    align-items:flex-start;
+}
+
+/* left thread line */
+.fb-threadline{
+    width: 16px;
+    min-width: 16px;
+    position: relative;
+    margin-top: 6px;
+}
+
+/* stem */
+.fb-threadline::before{
+    content:"";
+    position:absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #3a3a3a;
+    border-radius: 2px;
+}
+
+/* branch to bubble */
+.fb-threadline::after{
+    content:"";
+    position:absolute;
+    left: 7px;
+    top: 16px;
+    width: 10px;
+    height: 2px;
+    background:#3a3a3a;
+    border-radius: 2px;
+}
+
+/* last child: cut stem */
+.fb-threadline.last::before{
+    bottom:auto;
+    height: 16px;
+}
+
+/* root: no line */
+.fb-comment.root > .fb-threadline::before,
+.fb-comment.root > .fb-threadline::after{
+    display:none;
+}
+
+/* body */
+.fb-body{
+    flex:1;
+    min-width:0;
+}
+
+/* bubble */
+.fb-bubble{
+    display:inline-block;
+    max-width: 680px;
+    background: #3a3a3a;
+    border: 1px solid #2f3031;
+    border-radius: 18px;
+    padding: 10px 12px;
+}
+
+/* name */
+.fb-name{
+    color:#e4e6eb;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+/* text */
+.fb-text{
+    color:#e4e6eb;
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap:anywhere;
+}
+
+/* meta-row under bubble */
+.fb-meta{
+    display:flex;
+    gap: 10px;
+    align-items:center;
+    margin-left: 12px;
+    margin-top: 4px;
+    color:#b0b3b8;
+    font-size: 12px;
+}
+
+/* “Reply / Delete” as fb-links */
+.fb-link{
+    background: transparent;
+    border: none;
+    padding: 0;
+    color:#b0b3b8;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.fb-link:hover{
+    text-decoration: underline;
+}
+
+.fb-link:disabled{
+    opacity: .6;
+    cursor: default;
+    text-decoration: none;
+}
+
+/* toggle show/ hide reply */
+.fb-toggle{
+    margin-left: 12px;
+    margin-top: 6px;
+}
+
+/* children: small indent, no runaway */
+.fb-children{
+    margin-top: 8px;
+    padding-left: 18px;
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+}
+/* ===== FB-ish comments without avatar ===== */
+
+.fb-thread{
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+}
+
+.fb-row{
+    display:flex;
+    align-items:flex-start;
+    gap: 10px;
+}
+
+/* left rail with line */
+.fb-rail{
+    width: 18px;
+    min-width: 18px;
+    position: relative;
+    margin-top: 6px;
+}
+
+/* vertical line */
+.fb-rail::before{
+    content:"";
+    position:absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background:#3b3b3b;
+    border-radius: 2px;
+}
+
+/* elbow to bubble */
+.fb-rail::after{
+    content:"";
+    position:absolute;
+    left: 8px;
+    top: 20px;
+    width: 12px;
+    height: 2px;
+    background:#3b3b3b;
+    border-radius: 2px;
+}
+
+.fb-rail.last::before{
+    bottom:auto;
+    height: 20px;
+}
+
+.fb-row.root > .fb-rail::before,
+.fb-row.root > .fb-rail::after{
+    display:none;
+}
+
+.fb-main{
+    flex:1;
+    min-width:0;
+}
+
+.fb-bubble {
+    display: block;
+    max-width: 100%;
+    background: #3a3a3a;
+    border-radius: 16px;
+    padding: 10px 12px;
+}
+
+.fb-name{
+    color:#e4e6eb;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.fb-text{
+    color:#e4e6eb;
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap:anywhere;
+}
+
+.fb-meta{
+    display:flex;
+    gap: 12px;
+    align-items:center;
+    margin-left: 12px;
+    margin-top: 4px;
+    color:#b0b3b8;
+    font-size: 12px;
+}
+
+.fb-link{
+    background: transparent;
+    border: none;
+    padding: 0;
+    color:#b0b3b8;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.fb-link:hover{ text-decoration: underline; }
+.fb-link:disabled{
+    opacity:.6;
+    cursor:default;
+    text-decoration:none;
+}
+
+.fb-toggle{
+    margin-left: 12px;
+    margin-top: 6px;
+}
+
+.fb-children{
+    margin-top: 10px;
+    padding-left: 22px;
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+}
