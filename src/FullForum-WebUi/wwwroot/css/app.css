@@ -754,3 +754,13 @@ select.form-input {
     flex-direction:column;
     gap: 12px;
 }
+
+/*
+Profile Cards
+ */
+.profile-card-container {
+    width: 900px;
+    max-width: 100%;
+    color: white;
+    margin: 20px auto 0 auto;
+}
