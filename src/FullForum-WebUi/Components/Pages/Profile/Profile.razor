@@ -1,0 +1,608 @@
+﻿@page "/profile"
+@using System.ComponentModel.DataAnnotations
+@using FullForum_WebUi.Models.Users.Activity
+@using FullForum_WebUi.Models.Users.Profile.Request
+@using FullForum_WebUi.Services
+@using FullForum_WebUi.Services.Auth
+@using FullForum_WebUi.Services.Exceptions
+@using FullForum_WebUi.Services.UI
+
+@using FullForum_WebUi.Models.Auth.Responses
+@inject ApiClient Api
+@inject IUiStatus Ui
+@inject AuthState Auth
+@inject ITokenStore Tokens
+@inject NavigationManager Nav
+
+<PageTitle>Profile</PageTitle>
+
+<main class="login-main">
+    <div class="card login-card profile-card-container">
+
+        <h1 style="margin-bottom: 6px;">My Profile</h1>
+        <p style="color: #cfcfcf; margin-bottom: 24px;">
+            Here you can review your account details, browse your forum activity, and update your account settings.
+        </p>
+        
+        @* Switches between profile overview and settings *@
+        <div style="display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;">
+            <button class="btn-submit"
+                    type="button"
+                    style="@GetTabStyle("profile")"
+                    @onclick='() => SwitchTab("profile")'>
+                Profile
+            </button>
+
+            <button class="btn-submit"
+                    type="button"
+                    style="@GetTabStyle("settings")"
+                    @onclick='() => SwitchTab("settings")'>
+                Settings
+            </button>
+        </div>
+        
+        @* Shows error message if Ui service contains an error *@
+        @if (Ui.Error is not null)
+        {
+            <div class="alert alert-danger">
+                <strong>@Ui.Error.Title</strong>
+                <div>@Ui.Error.Detail</div>
+            </div>
+        }
+        
+        @* Shows message if user is not logged in *@
+        @if (!Auth.IsAuthenticated && _loadedOnce)
+        {
+            <p>You are not logged in.</p>
+            <button class="btn-submit" @onclick='() => Nav.NavigateTo("/login")'>Go to login</button>
+        }
+        @* Shows loading state while profile is loading *@
+        else if (Ui.IsBusy && !_isSavingProfile && !_isChangingPassword)
+        {
+            <p>Loading profile...</p>
+        }
+        @* Shows retry option if profile failed to load *@
+        else if (_me is null)
+        {
+            <p>Profile could not be loaded.</p>
+            <button class="btn-submit" @onclick="LoadAsync">Retry</button>
+        }
+        else
+        {
+            @* Profile overview tab *@
+            @if (_activeTab == "profile")
+            {
+                @* User information cards *@
+                <section style="margin-bottom: 18px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+
+                        <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; background-color: #1f1f1f;">
+                            <div style="font-size: 13px; color: #bdbdbd; margin-bottom: 6px;">Email</div>
+                            <div style="font-size: 16px; font-weight: 600;">@_me.Email</div>
+                        </div>
+
+                        <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; background-color: #1f1f1f;">
+                            <div style="font-size: 13px; color: #bdbdbd; margin-bottom: 6px;">Username</div>
+                            <div style="font-size: 16px; font-weight: 600;">@_me.DisplayName</div>
+                        </div>
+
+                        <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; background-color: #1f1f1f;">
+                            <div style="font-size: 13px; color: #bdbdbd; margin-bottom: 6px;">Roles</div>
+                            <div style="font-size: 16px; font-weight: 600;">@(string.Join(", ", _me.Roles ?? Enumerable.Empty<string>()))</div>
+                        </div>
+
+                        <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; background-color: #1f1f1f;">
+                            <div style="font-size: 13px; color: #bdbdbd; margin-bottom: 6px;">Activity summary</div>
+                            <div style="font-size: 16px; font-weight: 600;">
+                                Threads: @(_activity?.Threads.Count ?? 0) • Comments: @(_activity?.Comments.Count ?? 0)
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+                @* Latest activity section *@
+                <section style="margin-bottom: 26px;">
+                    <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; background-color: #1f1f1f;">
+                        <div style="font-size: 13px; color: #bdbdbd; margin-bottom: 8px;">Latest activity</div>
+                        <div style="font-size: 16px; font-weight: 600;">
+                            @(GetLatestActivityDate()?.ToString("yyyy-MM-dd HH:mm") ?? "No activity yet")
+                        </div>
+                    </div>
+                </section>
+
+                <hr style="margin: 24px 0; border-color: #3a3a3a;" />
+                @* List of threads created by the user *@
+                <section style="margin-bottom: 32px;">
+                    <h2 style="margin-bottom: 16px;">My Threads</h2>
+
+                    @if (_activity is null || _activity.Threads.Count == 0)
+                    {
+                        <div style="border: 1px dashed #555; border-radius: 12px; padding: 18px; color: #cfcfcf;">
+                            You haven't created any threads yet.
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var thread in _activity.Threads.OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt))
+                        { 
+                            @* Thread card *@
+                            <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; margin-bottom: 14px; background-color: #1f1f1f;">
+                                <div style="font-size: 18px; font-weight: 700; margin-bottom: 10px;">
+                                    <a href="/threads/@thread.Id" style="color: #9ecbff; text-decoration: underline;">
+                                        @thread.ThreadTitle
+                                    </a>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; color: #d5d5d5;">
+                                    <div>
+                                        <div style="font-size: 12px; color: #a9a9a9;">Created</div>
+                                        <div>@thread.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                                    </div>
+
+                                    <div>
+                                        <div style="font-size: 12px; color: #a9a9a9;">Updated</div>
+                                        <div>@(thread.UpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "Not updated")</div>
+                                    </div>
+
+                                    <div>
+                                        <div style="font-size: 12px; color: #a9a9a9;">Comments</div>
+                                        <div>@thread.CommentCount</div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </section>
+                
+                @* List of comments written by the user *@
+                <section style="margin-bottom: 32px;">
+                    <h2 style="margin-bottom: 16px;">My Comments</h2>
+
+                    @if (_activity is null || _activity.Comments.Count == 0)
+                    {
+                        <div style="border: 1px dashed #555; border-radius: 12px; padding: 18px; color: #cfcfcf;">
+                            You haven't written any comments yet.
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var comment in _activity.Comments
+                            .OrderByDescending(c => c.CreatedAt)
+                            .Take(_visibleComments))
+                        {
+                            <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; margin-bottom: 14px; background-color: #1f1f1f;">
+
+                                <div style="font-size: 14px; color: #a9a9a9; margin-bottom: 8px;">
+                                    Comment
+                                </div>
+
+                                <div style="font-size: 16px; line-height: 1.5; margin-bottom: 14px; color: #f2f2f2; word-break: break-word; white-space: pre-wrap">
+                                    @comment.CommentContent
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; color: #d5d5d5; margin-bottom: 10px;">
+                                    <div>
+                                        <div style="font-size: 12px; color: #a9a9a9;">Created</div>
+                                        <div>@comment.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                                    </div>
+
+                                    <div>
+                                        <div style="font-size: 12px; color: #a9a9a9;">Updated</div>
+                                        <div>@(comment.UpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "Not updated")</div>
+                                    </div>
+                                </div>
+
+                                <div style="font-size: 13px; color: #bdbdbd; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                    <span>
+                                        <strong>Thread:</strong>
+                                        <a href="/threads/@comment.ThreadId" style="color: #9ecbff; text-decoration: underline; margin-left: 6px;">
+                                            @comment.ThreadTitle
+                                        </a>
+                                    </span>
+                                </div>
+                            </div>
+                        }
+
+                        <p style="color: #bdbdbd; margin-top: 8px;">
+                            Showing @Math.Min(_visibleComments, _activity.Comments.Count) of @_activity.Comments.Count comments.
+                        </p>
+
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                            @if (_activity.Comments.Count > _visibleComments)
+                            {
+                                <button class="btn-submit" type="button" @onclick="ShowMoreComments">
+                                    Show more comments
+                                </button>
+                            }
+
+                            @if (_visibleComments > 10)
+                            {
+                                <button class="btn-submit" type="button" @onclick="ShowLessComments">
+                                    Show less comments
+                                </button>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+            @* Settings tab *@
+            else if (_activeTab == "settings")
+            {
+                @* Edit profile form *@
+                <section style="margin-bottom: 32px;">
+                    <h2 style="margin-bottom: 16px;">Edit Profile</h2>
+
+                    <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; background-color: #1f1f1f;">
+                        <EditForm Model="_profileForm" OnValidSubmit="SaveProfileAsync">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                                <div style="display:flex; flex-direction:column; gap:6px;">
+                                    <label style="font-size: 14px; color: #dcdcdc;">Display name</label>
+                                    <InputText @bind-Value="_profileForm.DisplayName" class="form-control" />
+                                    <ValidationMessage For="@(() => _profileForm.DisplayName)" />
+                                </div>
+
+                                <div style="display:flex; flex-direction:column; gap:6px;">
+                                    <label style="font-size: 14px; color: #dcdcdc;">Email</label>
+                                    <InputText @bind-Value="_profileForm.Email" class="form-control" />
+                                    <ValidationMessage For="@(() => _profileForm.Email)" />
+                                </div>
+                            </div>
+
+                            <div style="font-size: 12px; color: #a9a9a9; margin-bottom: 12px;">
+                                Your display name is visible publicly in the forum.
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(_profileErrorMessage))
+                            {
+                                <div class="alert alert-danger" style="margin-bottom: 12px;">
+                                    @_profileErrorMessage
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(_profileSuccessMessage))
+                            {
+                                <div class="alert alert-success" style="margin-bottom: 12px;">
+                                    @_profileSuccessMessage
+                                </div>
+                            }
+
+                            <button class="btn-submit" type="submit" disabled="@_isSavingProfile">
+                                @(_isSavingProfile ? "Saving..." : "Save profile")
+                            </button>
+                        </EditForm>
+                    </div>
+                </section>
+                @* Change password form *@
+                <section style="margin-bottom: 32px;">
+                    <h2 style="margin-bottom: 16px;">Change Password</h2>
+
+                    <div style="border: 1px solid #444; border-radius: 12px; padding: 16px; background-color: #1f1f1f;">
+                        <EditForm Model="_passwordForm" OnValidSubmit="ChangePasswordAsync">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 16px;">
+                                <div style="display:flex; flex-direction:column; gap:6px;">
+                                    <label style="font-size: 14px; color: #dcdcdc;">Current password</label>
+                                    <InputText @bind-Value="_passwordForm.CurrentPassword" type="password" class="form-control" />
+                                    <ValidationMessage For="@(() => _passwordForm.CurrentPassword)" />
+                                </div>
+
+                                <div style="display:flex; flex-direction:column; gap:6px;">
+                                    <label style="font-size: 14px; color: #dcdcdc;">New password</label>
+                                    <InputText @bind-Value="_passwordForm.NewPassword" type="password" class="form-control" />
+                                    <ValidationMessage For="@(() => _passwordForm.NewPassword)" />
+                                    <div style="font-size: 12px; color: #a9a9a9;">
+                                        Password must contain at least 6 characters.
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; flex-direction:column; gap:6px;">
+                                    <label style="font-size: 14px; color: #dcdcdc;">Confirm new password</label>
+                                    <InputText @bind-Value="_passwordForm.ConfirmPassword" type="password" class="form-control" />
+                                    <ValidationMessage For="@(() => _passwordForm.ConfirmPassword)" />
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(_passwordErrorMessage))
+                            {
+                                <div class="alert alert-danger" style="margin-bottom: 12px;">
+                                    @_passwordErrorMessage
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(_passwordSuccessMessage))
+                            {
+                                <div class="alert alert-success" style="margin-bottom: 12px;">
+                                    @_passwordSuccessMessage
+                                </div>
+                            }
+
+                            <button class="btn-submit" type="submit" disabled="@_isChangingPassword">
+                                @(_isChangingPassword ? "Changing..." : "Change password")
+                            </button>
+                        </EditForm>
+                    </div>
+                </section>
+            }
+
+            <hr style="margin: 24px 0; border-color: #3a3a3a;" />
+            
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn-submit" disabled="@Ui.IsBusy" @onclick="Logout">
+                    Logout
+                </button>
+
+                <button class="btn-submit" @onclick='() => Nav.NavigateTo("/home")'>
+                    Back to Home
+                </button>
+            </div>
+        }
+    </div>
+</main>
+
+@code {
+    private MeResponse? _me;
+    private bool _loadedOnce;
+    private string _activeTab = "profile";
+    private EditProfileModel _profileForm = new();
+    private ChangePasswordFormModel _passwordForm = new();
+    private string? _profileSuccessMessage;
+    private string? _passwordSuccessMessage;
+    private string? _profileErrorMessage;
+    private string? _passwordErrorMessage;
+    private bool _isSavingProfile;
+    private bool _isChangingPassword;
+    private int _visibleComments = 10;
+    private UserActivityResponse? _activity;
+    
+    /// <summary>
+    /// Initializes the profile page and loads the current user's data.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        
+    }
+
+/// <summary>
+/// Changes the active tab and clears temporary status messages.
+/// </summary>
+    private void SwitchTab(string tab)
+    {
+        _activeTab = tab;
+        _profileSuccessMessage = null;
+        _passwordSuccessMessage = null;
+        _profileErrorMessage = null;
+        _passwordErrorMessage = null;
+    }
+    /// <summary>
+    /// Increases the number of visible comments in the profile view.
+    /// </summary>
+    private void ShowMoreComments()
+    {
+        _visibleComments += 10;
+    }
+    /// <summary>
+    /// Resets the visible comment count to the default value.
+    /// </summary>
+    private void ShowLessComments()
+    {
+        _visibleComments = 10;
+    }
+    /// <summary>
+    /// Returns the inline style for the selected profile tab.
+    /// </summary>
+    private string GetTabStyle(string tab)
+    {
+        return _activeTab == tab
+            ? "background-color: #2f6fed; color: white;"
+            : "background-color: #3a3a3a; color: white;";
+    }
+    
+    /// <summary>
+    /// Form model for editing the user's profile information.
+    /// </summary>
+    public class EditProfileModel
+    {
+        [Required(ErrorMessage = "Display name is required.")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Display name must be between 3 and 50 characters.")]
+        [RegularExpression(@"^(?!\s+$).+", ErrorMessage = "Display name cannot be empty or whitespace.")]
+        public string DisplayName { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+    }
+    
+    /// <summary>
+    /// Form model for changing the user's password.
+    /// </summary>
+    public class ChangePasswordFormModel
+    {
+        [Required(ErrorMessage = "Current password is required.")]
+        public string CurrentPassword { get; set; } = string.Empty;
+       
+        [Required(ErrorMessage = "New password is required.")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "New password must be at least 6 characters.")]
+        [RegularExpression(@"^(?!\s+$).+", ErrorMessage = "New password cannot be empty or whitespace.")]
+        public string NewPassword { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Please confirm the new password.")]
+        [Compare(nameof(NewPassword), ErrorMessage = "The password confirmation does not match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Loads the current user's profile and activity data from the API.
+    /// Redirect logic is handled if the user is not authenticated.
+    /// </summary>
+    private async Task LoadAsync()
+    {
+        Ui.SetError(null);
+        Ui.Offline(false);
+        _visibleComments = 10;
+        if (!Auth.IsAuthenticated)
+        {
+            _me = null;
+            _activity = null;
+            _loadedOnce = true;
+            return;
+        }
+        Ui.Busy(true);
+        try
+        {
+            _me = await Api.MeAsync();
+            if (_me is not null)
+            {
+                _profileForm.DisplayName = _me.DisplayName ?? string.Empty;
+                _profileForm.Email = _me.Email ?? string.Empty;
+            }
+            if (_me?.UserId is not null && Guid.TryParse(_me.UserId, out var userId))
+            {
+                _activity = await Api.GetUserActivityAsync(userId);
+            }
+        }
+        catch (ApiProblemException ex) when (ex.Status == 401)
+        {
+            Ui.SetError(new UiError("Unauthorized", "Please login again."));
+            Logout();
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            Ui.SetError(new UiError("Offline", "Cannot reach the server."));
+        }
+        catch (Exception ex)
+        {
+            Ui.SetError(new UiError("Error", ex.Message));
+        }
+        finally
+        {
+            Ui.Busy(false);
+            _loadedOnce = true;
+        }
+    }
+    /// <summary>
+    /// Saves the updated profile information through the API.
+    /// Updates the local auth state when the profile is changed successfully.
+    /// </summary>
+    private async Task SaveProfileAsync()
+    {
+        Ui.SetError(null);
+        _profileSuccessMessage = null;
+        _profileErrorMessage = null;
+        _passwordSuccessMessage = null;
+        _profileForm.DisplayName = _profileForm.DisplayName.Trim();
+        _profileForm.Email = _profileForm.Email.Trim();
+
+        try
+        {
+            _isSavingProfile = true;
+            await Api.UpdateProfileAsync(new UpdateUserProfileRequest(
+                _profileForm.DisplayName,
+                _profileForm.Email
+            ));
+
+            if (_me is not null)
+            {
+                _me.DisplayName = _profileForm.DisplayName;
+                _me.Email = _profileForm.Email;
+            }
+            Auth.UpdatePreferredName(_profileForm.DisplayName);
+            _profileSuccessMessage = "Profile updated successfully.";
+        }
+        catch (ApiProblemException ex)
+        {
+            _profileErrorMessage = ex.Message;
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            _profileErrorMessage = "Cannot reach the server.";
+        }
+        catch (Exception ex)
+        {
+            _profileErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSavingProfile = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    /// <summary>
+    /// Sends a password change request through the API.
+    /// Resets the password form after a successful update.
+    /// </summary>
+    private async Task ChangePasswordAsync()
+    {
+        Ui.SetError(null);
+        _passwordSuccessMessage = null;
+        _passwordErrorMessage = null;
+        _profileSuccessMessage = null;
+        _passwordForm.CurrentPassword = _passwordForm.CurrentPassword.Trim();
+        _passwordForm.NewPassword = _passwordForm.NewPassword.Trim();
+        _passwordForm.ConfirmPassword = _passwordForm.ConfirmPassword.Trim();
+        if (_passwordForm.CurrentPassword == _passwordForm.NewPassword)
+        {
+            _passwordErrorMessage = "The new password must be different from the current password.";
+            return;
+        }
+        try
+        {
+            _isChangingPassword = true;
+            await Api.ChangePasswordAsync(new ChangePasswordRequest(
+                _passwordForm.CurrentPassword,
+                _passwordForm.NewPassword
+            ));
+            _passwordSuccessMessage = "Password changed successfully.";
+            _passwordForm = new ChangePasswordFormModel();
+        }
+        catch (ApiProblemException ex)
+        {
+            _passwordErrorMessage = ex.Message;
+        }
+        catch (HttpRequestException)
+        {
+            Ui.Offline(true);
+            _passwordErrorMessage = "Cannot reach the server.";
+        }
+        catch (Exception ex)
+        {
+            _passwordErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _isChangingPassword = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    // Get latest activity date
+    /// <summary>
+    /// Returns the latest activity date based on the user's threads and comments.
+    /// </summary>
+    private DateTime? GetLatestActivityDate()
+    {
+        var threadDates = _activity?.Threads.Select(t => t.UpdatedAt ?? t.CreatedAt) ?? Enumerable.Empty<DateTime>();
+        var commentDates = _activity?.Comments.Select(c => c.UpdatedAt ?? c.CreatedAt) ?? Enumerable.Empty<DateTime>();
+        return threadDates
+            .Concat(commentDates)
+            .OrderByDescending(d => d)
+            .FirstOrDefault();
+    }
+    /// <summary>
+    /// Clears the local authentication state and redirects to the login page.
+    /// </summary>
+    private void Logout()
+    {
+        Tokens.SetToken(null);
+        Auth.SignOut();
+        _me = null;
+        _activity = null;
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+}

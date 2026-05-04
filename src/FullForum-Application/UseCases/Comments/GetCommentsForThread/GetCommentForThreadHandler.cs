@@ -24,7 +24,7 @@ public sealed record GetCommentForThreadHandler
         if (command.ThreadId == Guid.Empty)
             return GetCommentForThreadResult.Fail("Thread cannot be Empty");
 
-        var comments = await _repository.GetByUserIdAsync(command.ThreadId, cancellationToken);
+        var comments = await _repository.GetCommentsByThreadIdAsync(command.ThreadId, cancellationToken);
         return GetCommentForThreadResult.Ok(comments);
     }
 
