@@ -329,8 +329,11 @@ html, body {
 
 /* Form layout (same system as login) */
 .card-inner {
-    display: flex;
-    flex-direction: column;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1rem 1.2rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(6px);
 }
 
 /* Form groups */
